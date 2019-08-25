@@ -16,10 +16,8 @@ class User(Base):
     name = Column(String(250), nullable=False)
     email = Column(String(250), nullable=False)
     profile_image = Column(String(250), nullable=True)
-    status = Column(String(1), default='A')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     update_at = Column(DateTime, default=datetime.datetime.utcnow)
-    deleted_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
 class ItemCategory(Base):
@@ -27,18 +25,15 @@ class ItemCategory(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
-    status = Column(String(1), default='A')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     update_at = Column(DateTime, default=datetime.datetime.utcnow)
-    deleted_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     @property
     def serialize(self):
         """Return object data in easily serializable format"""
         return {
             'id': self.id,
-            'name': self.name,
-            'status': self.status
+            'name': self.name
         }
 
 
@@ -50,10 +45,8 @@ class Item(Base):
     item_category_id = Column(Integer, ForeignKey('item_categories.id'))
     title = Column(String(255), nullable=False)
     description = Column(String(255), nullable=False)
-    status = Column(String(1), default='A')
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     update_at = Column(DateTime, default=datetime.datetime.utcnow)
-    deleted_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     users = relationship(User)
     item_categories = relationship(ItemCategory)
@@ -64,8 +57,7 @@ class Item(Base):
         return {
             'id': self.id,
             'title': self.title,
-            'description': self.description,
-            'status': self.status
+            'description': self.description
         }
 
 
