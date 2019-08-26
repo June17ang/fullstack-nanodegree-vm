@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block title %}Edit {{ category.name }} category{% endblock %}
+{% block head %}
+<div class="container">
+    <h1>{{ item.title }} [{{ category.name }}]</h1>
+
+    <small>{{ owner.name }}</small>
+
+    <p>{{ item.description }}</p>
+</div>
+{% endblock %}

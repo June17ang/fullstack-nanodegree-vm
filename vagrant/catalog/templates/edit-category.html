@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block title %}Edit {{ category.name }} category{% endblock %}
+{% block head %}
+<div class="container">
+    <form method="POST">
+        <div class="form-group row">
+            <label for="category-name" class="label-control">Name</label>
+            <input type="text" class="form-control" name="category-name" id="category-name" value="{{ category.name }}" placeholder="Category Name" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save text-and-icon"></i>Submit</button>
+        <a href="{{ url_for('home') }}">
+            <button type="button" class="btn btn-danger"><i class="fas fa-times text-and-icon"></i>Cancel</button>
+        </a>
+    </form>
+</div>
+{% endblock %}

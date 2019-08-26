@@ -25,8 +25,11 @@ class ItemCategory(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
+    author_id = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     update_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    users = relationship(User)
 
     @property
     def serialize(self):

@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="container sections" >
+    <div class="row" >
+      <div class="col-md-12">
+          <h1> Welcome to Item Catalog App!</h1>
+          <p> Here you can view all the items filtered by a particular category. Click on a specific category to view, add, or delete items.
+          </p>
+      </div>
+    </div>
+    {% if 'username' in session %}
+    <div class="row" >
+      <div class="col-md-12" >
+        <a href="{{ url_for('add_category') }}" > <button class = "btn btn-primary" > <i class = "fas fa-plus text-and-icon" > </i> Add Category </button> </a>
+        <a href="{{ url_for('add_item') }}" >
+            <button class = "btn btn-success" style = "margin-left: 10px;" >
+                <i class = "fas fa-plus text-and-icon" > </i> Add Item
+            </button>
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="container sections">
+            <div class="row">
+              <div class="col-md-3" style="background-color:white; padding-top: 8px;">
+                <h2>Category</h2><hr>
+                {% for category in categories %}
+                  <a href="{{ url_for('CategoryAllItemJson', category_id=category.id) }}"><p>{{ category.name }}</p></a>
+                {% endfor %}
+              </div>
+
+              <div class="offset-md-1"></div>
+
+              <div class="col-md-8">
+                <h2>Latest Items</h2><hr>
+                {% for item in items %}
+                  <a href="{{ url_for('viewItem', item_id=item.id) }}"><p>{{ item.name }}</p></a>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+</div>
+{% endblock %}

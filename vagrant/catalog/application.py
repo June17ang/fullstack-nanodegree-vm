@@ -3,6 +3,7 @@ import string
 import json
 import requests
 import httplib2
+import datetime
 from flask import Flask, render_template, url_for, request
 from flask import redirect, flash, jsonify, make_response
 from sqlalchemy import create_engine
@@ -21,7 +22,8 @@ Base.metadata.bind = engine
 Session = sessionmaker(bind=engine)
 session = Session()
 
-CLIENT_ID = json.loads(open('client_secrets.json', 'r').read())['web']['client_id']
+CLIENT_ID = json.loads(open('client_secret.json', 'r').read())[
+    'web']['client_id']
 
 
 # redirect function
@@ -30,24 +32,12 @@ def redirect_url(default='home'):
 
 
 # ------------------------------ Login ------------------------------------
-@app.route('/login/')
-def login():
-    """Route to the login page and create anti-forgery state token."""
-
-    state = ''.join(
-        random.choice(
-            string.ascii_uppercase +
-            string.digits) for x in range(32))
-    login_session['state'] = state
-    return render_template("login.html", STATE=state, client_id=CLIENT_ID)
 
 # Redirect to login page.
 @app.route('/')
-@app.route('/category/')
-@app.route('/items/')
+@app.route('/category')
+@app.route('/item')
 def home():
-    """Route to the homepage."""
-
     categories = session.query(ItemCategory).all()
     items = session.query(Item).all()
     return render_template(
@@ -55,16 +45,31 @@ def home():
 
 
 # Create state token
-@app.route('/login/')
+@app.route('/login')
 def login():
-    state = ''.join(random.choice(string.ascii_uppercase + string.digits)
-                    for x in range(32))
+    state = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(32))
     login_session['state'] = state
     return render_template("login.html", STATE=state, client_id=CLIENT_ID)
 
 
 # Connect to the Google Sign-in oAuth method.
-@app.route('/google-connect', methods=['POST'])
+@app.route('/google-login', methods=['POST'])
+def google_login(request):
+    token_request_uri = "https://accounts.google.com/o/oauth2/v2/auth"
+    response_type = "code"
+    redirect_uri = "http://localhost:5000/login/google/auth"
+    scope = "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email"
+    url = "{token_request_uri}?response_type={response_type}&client_id={client_id}&redirect_uri={redirect_uri}&scope={scope}".format(
+        token_request_uri = token_request_uri,
+        response_type = response_type,
+        client_id = CLIENT_ID,
+        redirect_uri = redirect_uri,
+        scope = scope)
+    return url(url)
+
+
+# Connect to the Google Sign-in oAuth method.
+@app.route('/login/google/auth', methods=['POST'])
 def googleConnect():
     # Validate state token
     if request.args.get('state') != login_session['state']:
@@ -87,7 +92,7 @@ def googleConnect():
 
     # Check that the access token is valid.
     access_token = credentials.access_token
-    url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s'
+    url = ('https://www.googleapis.com/oauth2/v2/tokeninfo?access_token=%s'
            % access_token)
     h = httplib2.Http()
     result = json.loads(h.request(url, 'GET')[1])
@@ -126,7 +131,7 @@ def googleConnect():
     login_session['google_id'] = google_id
 
     # Get user info.
-    userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
+    userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
     params = {'access_token': credentials.access_token, 'alt': 'json'}
     answer = requests.get(userinfo_url, params=params)
 
@@ -200,7 +205,7 @@ def logout():
         del login_session['access_token']
         del login_session['username']
         del login_session['email']
-        del login_session['picture']
+        del login_session['profile_image']
         del login_session['user_id']
         flash("You have been successfully logged out!")
         return redirect(redirect_url())
@@ -231,7 +236,7 @@ def getUserId(email):
     try:
         user = session.query(User).filter_by(email=email).one()
         return user.id
-    except:
+    except BaseException:
         return None
 
 
@@ -264,13 +269,31 @@ def CategoryItemJson(category_id, item_id):
 def CategoryAllItemJson(category_id):
     if existsCategory('id', category_id):
         item = session.query(Item).filter_by(
-            item_category_id=category_id).first()
+            item_category_id=category_id).all()
         if item is not None:
             return jsonify(item=item.serialize)
         else:
             return jsonify(error='Unable to reach that category item.')
     else:
         return jsonify(error='The category does not exist.')
+
+
+# View an item by its ID.
+@app.route('/item/<int:item_id>/')
+def viewItem(item_id):
+    if existsItem('id', item_id):
+        item = session.query(Item).filter_by(id=item_id).first()
+        category = session.query(ItemCategory).filter_by(id=item.category_id).first()
+        owner = session.query(User).filter_by(id=item.author_id).first()
+        return render_template(
+            "view-item.html",
+            item=item,
+            category=category,
+            owner=owner
+        )
+    else:
+        flash('We are unable to process your request right now.')
+        return redirect(url_for('home'))
 
 
 # Create a new item.
@@ -280,13 +303,13 @@ def createNewItem():
         flash("Login to create new item.")
         return redirect(url_for('login'))
     elif request.method == 'POST':
-        itemName = request.form['name']
-        if existsItem('name', itemName):
+        itemTitle = request.form['title']
+        if existsItem('name', itemTitle):
             flash('The item already exists in the database!')
             return redirect(redirect_url())
 
         new_item = Item(
-            title=itemName,
+            title=itemTitle,
             description=request.form['description'],
             item_category_id=request.form['category_id'],
             author_id=login_session['user_id']
@@ -327,6 +350,8 @@ def editItem(item_id):
             item.description = request.form['description']
         if request.form['item_category_id']:
             item.category_id = request.form['item_category_id']
+
+        item.updated_at = datetime.datetime.utcnow
         session.add(item)
         session.commit()
         flash('Item successfully updated!')
@@ -342,7 +367,7 @@ def editItem(item_id):
 
 
 # Delete existing item.
-@app.route("/item/<int:item_id>/delete/", methods='POST')
+@app.route("/item/<int:item_id>/delete/", methods=['DELETE'])
 def deleteItem(item_id):
     if 'username' not in login_session:
         flash("Login to delete item")
@@ -384,7 +409,7 @@ def allCategoriesJson():
 
 
 # Add a new category.
-@app.route("/category/new", methods=['GET', 'POST'])
+@app.route("/category/create", methods=['GET', 'POST'])
 def createNewCategory():
     if 'username' not in login_session:
         flash("Login to create new category")
@@ -434,6 +459,7 @@ def editCategory(category_id):
         categoryName = request.form['name']
         if categoryName:
             category.name = categoryName
+            category.updated_at = datetime.datetime.utcnow()
             session.add(category)
             session.commit()
             flash('Category update successfully!')
@@ -454,5 +480,7 @@ def existsCategory(attr, value):
 
 
 if __name__ == '__main__':
+    app.secret_key = 'secret key'
+    app.config['SESSION_TYPE'] = 'filesystem'
     app.debug = True
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=5000)
